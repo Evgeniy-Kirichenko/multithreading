@@ -1,28 +1,38 @@
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class Main {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
+
         String[] texts = new String[25];
         for (int i = 0; i < texts.length; i++) {
             texts[i] = generateText("aab", 30_000);
         }
-        List<Thread> threads = new ArrayList<>();
+        List<Future<Integer>> futures = new ArrayList<>();//
+        List<Integer> res = new ArrayList<>();//для сбора результата
+
+        ExecutorService ex = Executors.newFixedThreadPool(10);//создаем пул потоков
 
         long startTs = System.currentTimeMillis(); // start time
         for (String text : texts) {
-            threads.add(new Thread(() -> maxSizeText(text)));
+            futures.add(ex.submit(() -> maxSizeText(text)));//отправляем задачу на выполнение и результат собираем
         }
-        for (Thread thread : threads) {
-            thread.start();
+
+        for (Future<Integer> future : futures) {//собираем ответы от Future
+            res.add(future.get());
         }
-        for (Thread thread : threads) {
-            thread.join();
-        }
+
         long endTs = System.currentTimeMillis(); // end time
+        System.out.println("Максимальное значение = " + res.stream().max(Comparator.naturalOrder()).get());
 
         System.out.println("Time: " + (endTs - startTs) + "ms");
+        ex.shutdown();
     }
 
     public static String generateText(String letters, int length) {
@@ -34,7 +44,7 @@ public class Main {
         return text.toString();
     }
 
-    public static void maxSizeText(String text) {
+    public static Integer maxSizeText(String text) {
         int maxSize = 0;
         for (int i = 0; i < text.length(); i++) {
             for (int j = 0; j < text.length(); j++) {
@@ -54,5 +64,6 @@ public class Main {
             }
         }
         System.out.println(text.substring(0, 100) + " -> " + maxSize);
+        return (Integer) maxSize;
     }
 }
